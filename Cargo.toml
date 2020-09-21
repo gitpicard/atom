@@ -1,0 +1,7 @@
+[package]
+authors = ["Philip Picard <picardph@mail.gvsu.edu>"]
+edition = "2018"
+name = "atom"
+version = "0.1.0"
+
+[dependencies]
