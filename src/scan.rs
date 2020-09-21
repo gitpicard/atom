@@ -1,35 +1,42 @@
 use crate::error::*;
 
-pub enum Token {
-    Plus(TokenData),
-    Minus(TokenData),
-    Star(TokenData),
-    Slash(TokenData),
-    Bang(TokenData),
-    Pipe(TokenData),
-    Ampersand(TokenData),
-    Caret(TokenData),
-    Percent(TokenData),
-    Tilde(TokenData),
-    Dot(TokenData),
-    NumberLiteral(TokenData),
+#[derive(Copy, Clone)]
+pub enum TokenType {
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    Bang,
+    Pipe,
+    Ampersand,
+    Caret,
+    Percent,
+    Tilde,
+    Dot,
+    NumberLiteral,
 }
 
-pub struct TokenData {
+pub struct Token {
+    tok: TokenType,
     src_name: String,
     src_ln: u32,
     src_col: u32,
     src_data: String,
 }
 
-impl TokenData {
-    pub fn new(name: &str, line: u32, column: u32, data: &str) -> Self {
+impl Token {
+    pub fn new(token: TokenType, name: &str, line: u32, column: u32, data: &str) -> Self {
         Self {
+            tok: token,
             src_name: String::from(name),
             src_ln: line,
             src_col: column,
             src_data: String::from(data),
         }
+    }
+
+    pub fn token_type(&self) -> TokenType {
+        self.tok
     }
 
     pub fn source_name(&self) -> &str {
@@ -105,28 +112,36 @@ impl<'a> Scanner<'a> {
     }
 
     fn operator(&self, op: char) -> Option<Token> {
-        // Generate data about the operator.
-        let data = TokenData::new(
+        let operator = match op {
+            '+' => Some(TokenType::Plus),
+            '-' => Some(TokenType::Minus),
+            '*' => Some(TokenType::Star),
+            '/' => Some(TokenType::Star),
+            '!' => Some(TokenType::Bang),
+            '|' => Some(TokenType::Pipe),
+            '&' => Some(TokenType::Ampersand),
+            '^' => Some(TokenType::Caret),
+            '%' => Some(TokenType::Percent),
+            '~' => Some(TokenType::Tilde),
+            '.' => Some(TokenType::Dot),
+            _ => None,
+        };
+
+        // Handle the case that a bad character was passed
+        // in that is not an operator.
+        if operator.is_none() {
+            return None;
+        }
+
+        // Create an object filled with data describing the operator
+        // that was found.
+        Some(Token::new(
+            operator.unwrap(),
             &self.src_name[..],
             self.src_ln,
             self.src_col,
             &String::from(op)[..],
-        );
-
-        return match op {
-            '+' => Some(Token::Plus(data)),
-            '-' => Some(Token::Minus(data)),
-            '*' => Some(Token::Star(data)),
-            '/' => Some(Token::Star(data)),
-            '!' => Some(Token::Bang(data)),
-            '|' => Some(Token::Pipe(data)),
-            '&' => Some(Token::Ampersand(data)),
-            '^' => Some(Token::Caret(data)),
-            '%' => Some(Token::Percent(data)),
-            '~' => Some(Token::Tilde(data)),
-            '.' => Some(Token::Dot(data)),
-            _ => None,
-        };
+        ))
     }
 
     fn consume_whitespace(&mut self) {
@@ -189,12 +204,13 @@ impl<'a> Scanner<'a> {
                 // We did not see one of the comment start tokens. Which
                 // means that we found the single slash which is the slash operator.
                 Some(_) => {
-                    return Some(Result::Ok(Token::Slash(TokenData::new(
+                    return Some(Result::Ok(Token::new(
+                        TokenType::Slash,
                         &self.src_name,
                         self.src_ln,
                         self.src_col,
                         "/",
-                    ))))
+                    )))
                 }
                 // No more source code to look at.
                 None => return None,
@@ -228,12 +244,13 @@ impl<'a> Scanner<'a> {
             }
         }
 
-        Token::NumberLiteral(TokenData::new(
+        Token::new(
+            TokenType::NumberLiteral,
             &self.src_name[..],
             self.src_ln,
             self.src_col,
             &buffer[..],
-        ))
+        )
     }
 }
 

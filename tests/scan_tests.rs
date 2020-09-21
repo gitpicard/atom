@@ -19,17 +19,6 @@ fn test_token() {
     }
 }
 
-fn compare_tokens(scanner: &Scanner, expected: &Vec<Token>, bool ignorePos) {
-    for t in expected {
-        if let Some(actual) = scanner.next() {
-            assert_eq!(actual, expected);
-        }
-    }
-    // Make sure that the scanner did not find more tokens
-    // then what there really are.
-    assert_ne!(scanner.next(), None);
-}
-
 #[test]
 fn test_scanner_starting_state() {
     let scan = Scanner::new("test", "");
