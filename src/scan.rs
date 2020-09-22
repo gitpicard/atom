@@ -1,6 +1,6 @@
 use crate::error::*;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, std::fmt::Debug)]
 pub enum TokenType {
     Plus,
     Minus,
@@ -51,7 +51,7 @@ impl Token {
         self.src_col
     }
 
-    pub fn data(&self) -> &str {
+    pub fn token_data(&self) -> &str {
         &self.src_data[..]
     }
 }
@@ -68,7 +68,7 @@ impl<'a> Scanner<'a> {
         Self {
             src_name: String::from(name),
             src_ln: 1,
-            src_col: 1,
+            src_col: 0,
             src: source.chars().peekable(),
         }
     }
@@ -77,7 +77,7 @@ impl<'a> Scanner<'a> {
         // Reset the scanner to a starting state and provide new code.
         self.src_name = String::from(name);
         self.src_ln = 1;
-        self.src_col = 1;
+        self.src_col = 0;
         self.src = source.chars().peekable();
     }
 
@@ -105,7 +105,7 @@ impl<'a> Scanner<'a> {
         // Make sure to handle new lines.
         if c.is_some() && c.unwrap() == '\n' {
             self.src_ln += 1;
-            self.src_col = 1;
+            self.src_col = 0;
         }
 
         c
@@ -193,7 +193,7 @@ impl<'a> Scanner<'a> {
                     // of the file. This prevents bugs with mismatched multi-line comments
                     // accidentally commenting out the entire file.
                     if !hit_end {
-                        return Some(Result::Err(Error::new(
+                        return Some(Err(Error::new(
                             "expected '*/' but found eof",
                             &self.src_name,
                             self.src_ln,
@@ -204,7 +204,7 @@ impl<'a> Scanner<'a> {
                 // We did not see one of the comment start tokens. Which
                 // means that we found the single slash which is the slash operator.
                 Some(_) => {
-                    return Some(Result::Ok(Token::new(
+                    return Some(Ok(Token::new(
                         TokenType::Slash,
                         &self.src_name,
                         self.src_ln,
@@ -227,6 +227,8 @@ impl<'a> Scanner<'a> {
     fn consume_number(&mut self, starting: char) -> Token {
         let mut dot = if starting == '.' { true } else { false };
         let mut buffer = String::from(starting);
+        // Remember where the number started for debug tracking purposes.
+        let start_column = self.src_col;
 
         // Keep consuming digits as long as we can. The scanner is
         // a greedy algorithm.
@@ -248,7 +250,7 @@ impl<'a> Scanner<'a> {
             TokenType::NumberLiteral,
             &self.src_name[..],
             self.src_ln,
-            self.src_col,
+            start_column,
             &buffer[..],
         )
     }
@@ -269,27 +271,27 @@ impl Iterator for Scanner<'_> {
             // The unwraps here must be safe because we are passing in a character literal
             // and we know that those literals will always match in this case. If the operator
             // function is called from somewhere else, this may not be the case.
-            Some('+') => Some(Result::Ok(self.operator('+').unwrap())),
-            Some('-') => Some(Result::Ok(self.operator('-').unwrap())),
-            Some('*') => Some(Result::Ok(self.operator('*').unwrap())),
-            Some('/') => Some(Result::Ok(self.operator('/').unwrap())),
-            Some('!') => Some(Result::Ok(self.operator('!').unwrap())),
-            Some('|') => Some(Result::Ok(self.operator('|').unwrap())),
-            Some('&') => Some(Result::Ok(self.operator('&').unwrap())),
-            Some('^') => Some(Result::Ok(self.operator('^').unwrap())),
-            Some('%') => Some(Result::Ok(self.operator('%').unwrap())),
-            Some('~') => Some(Result::Ok(self.operator('~').unwrap())),
-            Some('.') => Some(Result::Ok(self.operator('.').unwrap())),
+            Some('+') => Some(Ok(self.operator('+').unwrap())),
+            Some('-') => Some(Ok(self.operator('-').unwrap())),
+            Some('*') => Some(Ok(self.operator('*').unwrap())),
+            Some('/') => Some(Ok(self.operator('/').unwrap())),
+            Some('!') => Some(Ok(self.operator('!').unwrap())),
+            Some('|') => Some(Ok(self.operator('|').unwrap())),
+            Some('&') => Some(Ok(self.operator('&').unwrap())),
+            Some('^') => Some(Ok(self.operator('^').unwrap())),
+            Some('%') => Some(Ok(self.operator('%').unwrap())),
+            Some('~') => Some(Ok(self.operator('~').unwrap())),
+            Some('.') if !self.peek().unwrap_or(&'\0').is_ascii_digit() => Some(Ok(self.operator('.').unwrap())),
             Some(c)
                 // The pattern guard verifies that we start with a digit or a dot followed
                 // by a digit. Just the dot is not enough because it could be the dot operator.
                 if c.is_ascii_digit() || (c == '.' && self.peek().unwrap_or(&'\0').is_ascii_digit()) =>
                     // Build a number out of all the digits we can find.
-                    Some(Result::Ok(self.consume_number(c))),
+                    Some(Ok(self.consume_number(c))),
             Some(c) => {
                 // If we made it this far then we where unable to determine
                 // what the token was and we will report the error.
-                return Some(Result::Err(Error::new(
+                return Some(Err(Error::new(
                     &format!("unexpected {} token", c)[..],
                     &self.src_name[..],
                     self.src_ln,
