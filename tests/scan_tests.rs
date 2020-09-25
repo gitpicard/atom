@@ -143,3 +143,83 @@ fn test_numbers() {
         false,
     );
 }
+
+#[test]
+fn test_strings() {
+    let mut scanner: Scanner = Scanner::new("test", "'' \"\"");
+    verify_list(
+        &mut scanner,
+        &vec![
+            Token::new(TokenType::StringLiteral, "test", 1, 1, ""),
+            Token::new(TokenType::FormattedStringLiteral, "test", 1, 4, ""),
+        ],
+        false,
+    );
+
+    scanner.provide("test", "'hello world'");
+    verify_list(
+        &mut scanner,
+        &vec![Token::new(
+            TokenType::StringLiteral,
+            "test",
+            1,
+            1,
+            "hello world",
+        )],
+        false,
+    );
+
+    scanner.provide("test", "'hello\\nworld'");
+    verify_list(
+        &mut scanner,
+        &vec![Token::new(
+            TokenType::StringLiteral,
+            "test",
+            1,
+            1,
+            "hello\nworld",
+        )],
+        false,
+    );
+
+    scanner.provide("test", "'\\t\\n\\r\\\\'");
+    verify_list(
+        &mut scanner,
+        &vec![Token::new(
+            TokenType::StringLiteral,
+            "test",
+            1,
+            1,
+            "\t\n\r\\",
+        )],
+        false,
+    );
+
+    // Verify that errors are returned when invalid strings are given.
+    scanner.provide("test", "'");
+    verify_error_at(&mut scanner, &Error::new("", "test", 1, 2));
+    scanner.provide("test", "'\\");
+    verify_error_at(&mut scanner, &Error::new("", "test", 1, 3));
+    scanner.provide("test", "'\"");
+    verify_error_at(&mut scanner, &Error::new("", "test", 1, 3));
+    scanner.provide("test", "'\\a'");
+    verify_error_at(&mut scanner, &Error::new("", "test", 1, 3));
+}
+
+#[test]
+fn test_identifier() {
+    let mut scanner: Scanner =
+        Scanner::new("test", "hello world testing123 test_123 hello_world _");
+    verify_list(
+        &mut scanner,
+        &vec![
+            Token::new(TokenType::Identifier, "test", 1, 1, "hello"),
+            Token::new(TokenType::Identifier, "test", 1, 7, "world"),
+            Token::new(TokenType::Identifier, "test", 1, 13, "testing123"),
+            Token::new(TokenType::Identifier, "test", 1, 24, "test_123"),
+            Token::new(TokenType::Identifier, "test", 1, 33, "hello_world"),
+            Token::new(TokenType::Identifier, "test", 1, 45, "_"),
+        ],
+        false,
+    );
+}
