@@ -3,6 +3,10 @@ use crate::error::*;
 #[derive(Copy, Clone, PartialEq, Eq, std::fmt::Debug)]
 pub enum TokenType {
     Semicolon,
+    Comma,
+    Equals,
+    GreaterThan,
+    LessThan,
     Plus,
     Minus,
     Star,
@@ -44,6 +48,7 @@ pub enum TokenType {
     Break,
     Continue,
     Return,
+    Var,
 }
 
 pub struct Token {
@@ -167,13 +172,18 @@ impl<'a> Scanner<'a> {
             "break" => Some(TokenType::Break),
             "continue" => Some(TokenType::Continue),
             "return" => Some(TokenType::Return),
+            "var" => Some(TokenType::Var),
             _ => None,
         };
     }
 
     fn operator(&self, op: char) -> Option<Token> {
         let operator = match op {
+            ',' => Some(TokenType::Comma),
             ';' => Some(TokenType::Semicolon),
+            '=' => Some(TokenType::Equals),
+            '>' => Some(TokenType::GreaterThan),
+            '<' => Some(TokenType::LessThan),
             '+' => Some(TokenType::Plus),
             '-' => Some(TokenType::Minus),
             '*' => Some(TokenType::Star),
@@ -453,6 +463,10 @@ impl Iterator for Scanner<'_> {
             // and we know that those literals will always match in this case. If the operator
             // function is called from somewhere else, this may not be the case.
             Some(';') => Some(Ok(self.operator(';').unwrap())),
+            Some(',') => Some(Ok(self.operator(',').unwrap())),
+            Some('=') => Some(Ok(self.operator('=').unwrap())),
+            Some('<') => Some(Ok(self.operator('<').unwrap())),
+            Some('>') => Some(Ok(self.operator('>').unwrap())),
             Some('+') => Some(Ok(self.operator('+').unwrap())),
             Some('-') => Some(Ok(self.operator('-').unwrap())),
             Some('*') => Some(Ok(self.operator('*').unwrap())),
